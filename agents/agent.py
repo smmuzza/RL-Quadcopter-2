@@ -90,6 +90,8 @@ class Actor:
         net = layers.Dense(units=32, activation='relu')(states)
         net = layers.Dense(units=64, activation='relu')(net)
         net = layers.Dense(units=32, activation='relu')(net)
+        #net = layers.Dense(units=32, activation='relu')(net) #(SMM)
+        #net = layers.Dense(units=32, activation='relu')(net) #(SMM)
 
         # Try different layer sizes, activations, add batch normalization, regularizers, etc.
 
@@ -111,7 +113,8 @@ class Actor:
         # Incorporate any additional losses here (e.g. from regularizers)
 
         # Define optimizer and training function
-        optimizer = optimizers.Adam()
+        optimizer = optimizers.Adam() 
+        #optimizers.RMSprop(lr=0.001, rho=0.9, epsilon=None, decay=0.0) # (SMM) 
         updates_op = optimizer.get_updates(params=self.model.trainable_weights, loss=loss)
         self.train_fn = K.function(
             inputs=[self.model.input, action_gradients, K.learning_phase()],
@@ -203,23 +206,21 @@ class DDPG():
 
         # Noise process
         self.exploration_mu = 0 # original 0
-        self.exploration_theta = 0.2 # original 0.15
-        self.exploration_sigma = 0.5 # oringal 0.2
+        self.exploration_theta = 0.5 # original 0.15
+        self.exploration_sigma = 0.75 # oringal 0.2
         self.noise = OUNoise(self.action_size, self.exploration_mu, self.exploration_theta, self.exploration_sigma)
 
         # Replay memory
         self.buffer_size = 100000
-        self.batch_size = 64
+        self.batch_size = 32 # (SMM) default 64
         self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
 
         # Algorithm parameters
-        self.gamma = 0.99  # discount factor
-        self.tau = 0.01  # for soft update of target parameters
+        self.gamma = 0.999 # (SMM) 0.99  # discount factor
+        self.tau = 0.001 # (SMM) 0.01  # for soft update of target parameters
         
         # (SMM) Score tracker and learning parameters
-        self.best_w = None
         self.best_score = -np.inf
-        self.noise_scale = 0.1
         self.score = 0
 
     def reset_episode(self):
@@ -280,7 +281,7 @@ class DDPG():
         self.soft_update(self.critic_local.model, self.critic_target.model)
         self.soft_update(self.actor_local.model, self.actor_target.model)   
 
-        # (SMM) Use a reward-based score
+        # (SMM) Use an average reward-based score
         self.score = self.total_reward / float(self.count) if self.count else 0.0
         if self.score > self.best_score:
             self.best_score = self.score
