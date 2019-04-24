@@ -90,6 +90,7 @@ class Actor:
         net = layers.Dense(units=32, activation='relu')(states)
         net = layers.Dense(units=64, activation='relu')(net)
         net = layers.Dense(units=32, activation='relu')(net)
+        #net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
         #net = layers.Dense(units=32, activation='relu')(net) #(SMM)
         #net = layers.Dense(units=32, activation='relu')(net) #(SMM)
 
@@ -150,15 +151,18 @@ class Critic:
         # Add hidden layer(s) for state pathway
         net_states = layers.Dense(units=32, activation='relu')(states)
         net_states = layers.Dense(units=64, activation='relu')(net_states)
+        #net_states = layers.BatchNormalization()(net_states) #(SMM) supposed to help according to paper CONTINUOUS CONTROL WITH DEEP REINFORCEMENT LEARNING
 
         # Add hidden layer(s) for action pathway
         net_actions = layers.Dense(units=32, activation='relu')(actions)
         net_actions = layers.Dense(units=64, activation='relu')(net_actions)
+        #net_actions = layers.BatchNormalization()(net_actions) #(SMM) supposed to help according to paper CONTINUOUS CONTROL WITH DEEP REINFORCEMENT LEARNING
 
         # Try different layer sizes, activations, add batch normalization, regularizers, etc.
 
         # Combine state and action pathways
         net = layers.Add()([net_states, net_actions])
+        
         net = layers.Activation('relu')(net)
 
         # Add more layers to the combined network if needed
@@ -206,13 +210,13 @@ class DDPG():
 
         # Noise process
         self.exploration_mu = 0 # original 0
-        self.exploration_theta = 0.5 # original 0.15
-        self.exploration_sigma = 0.75 # oringal 0.2
+        self.exploration_theta = 0.2 # 0.01 seems to not suck # original 0.15
+        self.exploration_sigma = 0.3 # 0.01 seems to not suck # oringal 0.2
         self.noise = OUNoise(self.action_size, self.exploration_mu, self.exploration_theta, self.exploration_sigma)
 
         # Replay memory
         self.buffer_size = 100000
-        self.batch_size = 32 # (SMM) default 64
+        self.batch_size = 64 # (SMM) default 64, might watch to use a bigger batch, esp with batch norm
         self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
 
         # Algorithm parameters
@@ -222,7 +226,10 @@ class DDPG():
         # (SMM) Score tracker and learning parameters
         self.best_score = -np.inf
         self.score = 0
-
+        
+        # Episode variables
+        self.reset_episode()
+        
     def reset_episode(self):
         # (SMM) reset total reward and count
         self.total_reward = 0.0
