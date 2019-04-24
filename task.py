@@ -84,7 +84,7 @@ class Task():
         # use starting distance as the default reward
         distanceNow = np.linalg.norm(self.sim.pose[:3] - self.target_pos)   
         distanceStarting = np.linalg.norm(self.sim.init_pose[:3] - self.target_pos)
-        distanceReward = 0.001 * (distanceStarting - distanceNow)
+        distanceReward = 0.002 * (distanceStarting - distanceNow)
         
         # compute final reward
         reward = distanceReward + survivalReward + upReward
