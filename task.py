@@ -36,61 +36,24 @@ class Task():
         """Uses current pose of sim to return reward."""
  
         # reset reward
-        reward = 0
-               
-        # penalize large linear velocities
-        #reward = reward - 0.001 * np.power(self.sim.v[0], 2.)
-        #reward = reward - 0.001 * np.power(self.sim.v[1], 2.)
-        #reward = reward - 0.001 * np.power(self.sim.v[2], 2.)
-
-        # penalize large angles
-        #reward = reward - 0.001 * np.power(self.sim.pose[3], 2.)
-        #reward = reward - 0.001 * np.power(self.sim.pose[4], 2.)
-        #reward = reward - 0.001 * np.power(self.sim.pose[5], 2.)
-
-        # penalize large angular velocities (like from spinning)
-        #reward = reward - 0.001 * np.power(self.sim.angular_v[0], 1.)
-        #reward = reward - 0.001 * np.power(self.sim.angular_v[1], 1.)
-        #reward = reward - 0.001 * np.power(self.sim.angular_v[2], 1.)
-
-        # penalize large angular accelerations, reward smooth changes in behavior
-        #reward = reward - 0.001 * np.power(self.sim.angular_accels[0], 1.)
-        #reward = reward - 0.001 * np.power(self.sim.angular_accels[1], 1.)
-        #reward = reward - 0.001 * np.power(self.sim.angular_accels[2], 1.)
-               
-        # reward if currently coming closer to goal positoon
-        # in this case, the position delta should be prediced to decrease
-        # if delta decreases give a positive reward, otherwise negative
-        # this code seems to be the cause of getting stuck on the ground a lot
-        #dt = 0.01 # predict for a small time
-        #delta = abs(self.target_pos[0] - self.sim.pose[0])
-        #deltapred = abs(self.target_pos[0] - (self.sim.pose[0] + self.sim.v[0] * dt))
-        #reward = reward + (delta - deltapred) 
-        #delta = abs(self.target_pos[1] - self.sim.pose[1])
-        #deltapred = abs(self.target_pos[1] - (self.sim.pose[1] + self.sim.v[1] * dt))
-        #reward = reward + (delta - deltapred)
-        #delta = abs(self.target_pos[2] - self.sim.pose[2])
-        #deltapred = abs(self.target_pos[2] - (self.sim.pose[2] + self.sim.v[2] * dt))
-        #reward = reward + (delta - deltapred)
-               
-        # reward survival
-        survivalReward = 0.001 * (self.sim.time)
-
-        # reward going up if the agent is below Z of the goal
-        upReward = 0.
-        if self.sim.pose[2] <  self.target_pos[2] and self.sim.v[2] > 0:
-            upReward = 0.01
+        upReward = 0               
+        if self.sim.pose[2] < self.target_pos[2] and self.sim.v[2] > 0:
+            upReward += 10 * self.sim.pose[2]
+            
+        # check if within 1m of zone
+        if self.sim.pose[2] < self.target_pos[2] + 1 and self.sim.pose[2] > self.target_pos[2] - 1:
+            upReward += 10 / abs(self.sim.pose[2] - self.target_pos[2])
         
-        # use starting distance as the default reward
+        distanceReward = 0
+        distRewardFactor = 0.001
         distanceNow = np.linalg.norm(self.sim.pose[:3] - self.target_pos)   
-        distanceStarting = np.linalg.norm(self.sim.init_pose[:3] - self.target_pos)
-        distanceReward = 0.002 * (distanceStarting - distanceNow)
+#        distanceStarting = np.linalg.norm(self.sim.init_pose[:3] - self.target_pos)
+        distanceReward = -distRewardFactor * np.power((distanceNow), 2)
         
-        # compute final reward
-        reward = distanceReward + survivalReward + upReward
-        
+        reward = distanceReward + upReward
+
         # original distance based reward
-        #reward = 1. - .3 * (abs(self.sim.pose[:3] - self.target_pos)).sum()
+#        reward =  + 1. - .3 * (abs(self.sim.pose[:3] - self.target_pos)).sum()
         
         return reward
 

@@ -90,7 +90,7 @@ class Actor:
         net = layers.Dense(units=32, activation='relu')(states)
         net = layers.Dense(units=64, activation='relu')(net)
         net = layers.Dense(units=32, activation='relu')(net)
-        #net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
+        net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
         #net = layers.Dense(units=32, activation='relu')(net) #(SMM)
         #net = layers.Dense(units=32, activation='relu')(net) #(SMM)
 
@@ -151,12 +151,12 @@ class Critic:
         # Add hidden layer(s) for state pathway
         net_states = layers.Dense(units=32, activation='relu')(states)
         net_states = layers.Dense(units=64, activation='relu')(net_states)
-        #net_states = layers.BatchNormalization()(net_states) #(SMM) supposed to help according to paper CONTINUOUS CONTROL WITH DEEP REINFORCEMENT LEARNING
+        net_states = layers.BatchNormalization()(net_states) #(SMM) supposed to help according to paper CONTINUOUS CONTROL WITH DEEP REINFORCEMENT LEARNING
 
         # Add hidden layer(s) for action pathway
         net_actions = layers.Dense(units=32, activation='relu')(actions)
         net_actions = layers.Dense(units=64, activation='relu')(net_actions)
-        #net_actions = layers.BatchNormalization()(net_actions) #(SMM) supposed to help according to paper CONTINUOUS CONTROL WITH DEEP REINFORCEMENT LEARNING
+        net_actions = layers.BatchNormalization()(net_actions) #(SMM) supposed to help according to paper CONTINUOUS CONTROL WITH DEEP REINFORCEMENT LEARNING
 
         # Try different layer sizes, activations, add batch normalization, regularizers, etc.
 
@@ -208,10 +208,10 @@ class DDPG():
         self.critic_target.model.set_weights(self.critic_local.model.get_weights())
         self.actor_target.model.set_weights(self.actor_local.model.get_weights())
 
-        # Noise process
+        # Noise process (should be in units of RPMs for each rotor)
         self.exploration_mu = 0 # original 0
-        self.exploration_theta = 0.2 # 0.01 seems to not suck # original 0.15
-        self.exploration_sigma = 0.3 # 0.01 seems to not suck # oringal 0.2
+        self.exploration_theta = 0.15 # 0.01 seems to not suck # original 0.15
+        self.exploration_sigma = 0.2 # 0.01 seems to not suck # oringal 0.2
         self.noise = OUNoise(self.action_size, self.exploration_mu, self.exploration_theta, self.exploration_sigma)
 
         # Replay memory
