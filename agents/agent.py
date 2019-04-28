@@ -61,7 +61,7 @@ from keras import backend as K
 class Actor:
     """Actor (Policy) Model."""
 
-    def __init__(self, state_size, action_size, action_low, action_high):
+    def __init__(self, state_size, action_size, action_low, action_high, useDefault):
         """Initialize parameters and build model.
 
         Params
@@ -71,6 +71,7 @@ class Actor:
             action_low (array): Min value of each action dimension
             action_high (array): Max value of each action dimension
         """
+        self.useDefault = useDefault
         self.state_size = state_size
         self.action_size = action_size
         self.action_low = action_low
@@ -87,13 +88,22 @@ class Actor:
         states = layers.Input(shape=(self.state_size,), name='states')
 
         # Add hidden layers
-        net = layers.Dense(units=32, activation='relu')(states)
-        net = layers.Dense(units=64, activation='relu')(net)
-        net = layers.Dense(units=32, activation='relu')(net)
-        net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
-        #net = layers.Dense(units=32, activation='relu')(net) #(SMM)
-        #net = layers.Dense(units=32, activation='relu')(net) #(SMM)
-
+        if self.useDefault:
+            net = layers.Dense(units=32, activation='relu')(states)
+            net = layers.Dense(units=64, activation='relu')(net)
+            net = layers.Dense(units=32, activation='relu')(net)
+        else:    
+            net = layers.Dense(units=128, activation='relu')(states)
+            net = layers.Dropout(0.5)(net)
+            net = layers.Dense(units=128, activation='relu')(net)
+            net = layers.Dropout(0.5)(net)
+            net = layers.Dense(units=128, activation='relu')(net)
+            net = layers.Dropout(0.5)(net)
+            net = layers.Dense(units=128, activation='relu')(net)
+            net = layers.Dropout(0.5)(net)
+#        net = layers.GaussianNoise(1.0)(net)
+            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
+        
         # Try different layer sizes, activations, add batch normalization, regularizers, etc.
 
         # Add final output layer with sigmoid activation
@@ -114,20 +124,18 @@ class Actor:
         # Incorporate any additional losses here (e.g. from regularizers)
 
         # Define optimizer and training function
-        optimizer = optimizers.Adam() 
-        #optimizers.RMSprop(lr=0.001, rho=0.9, epsilon=None, decay=0.0) # (SMM) 
+        optimizer = optimizers.Adam()
         updates_op = optimizer.get_updates(params=self.model.trainable_weights, loss=loss)
         self.train_fn = K.function(
             inputs=[self.model.input, action_gradients, K.learning_phase()],
             outputs=[],
             updates=updates_op)
-
         
         
 class Critic:
     """Critic (Value) Model."""
 
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, useDefault):
         """Initialize parameters and build model.
 
         Params
@@ -135,6 +143,7 @@ class Critic:
             state_size (int): Dimension of each state
             action_size (int): Dimension of each action
         """
+        self.useDefault = useDefault
         self.state_size = state_size
         self.action_size = action_size
 
@@ -149,20 +158,35 @@ class Critic:
         actions = layers.Input(shape=(self.action_size,), name='actions')
 
         # Add hidden layer(s) for state pathway
-        net_states = layers.Dense(units=32, activation='relu')(states)
-        net_states = layers.Dense(units=64, activation='relu')(net_states)
-        net_states = layers.BatchNormalization()(net_states) #(SMM) supposed to help according to paper CONTINUOUS CONTROL WITH DEEP REINFORCEMENT LEARNING
-
+        if self.useDefault:
+            net_states = layers.Dense(units=32, activation='relu')(states)
+            net_states = layers.Dense(units=64, activation='relu')(net_states)
+        else:
+            net_states = layers.Dense(units=128, activation='relu')(states)
+            net_states = layers.Dropout(0.5)(net_states)
+            net_states = layers.Dense(units=128, activation='relu')(net_states)
+            net_states = layers.Dropout(0.5)(net_states)
+            net_states = layers.Dense(units=128, activation='relu')(net_states)
+            net_states = layers.Dropout(0.5)(net_states)
+            net_states = layers.BatchNormalization()(net_states) #(SMM) 
+        
         # Add hidden layer(s) for action pathway
-        net_actions = layers.Dense(units=32, activation='relu')(actions)
-        net_actions = layers.Dense(units=64, activation='relu')(net_actions)
-        net_actions = layers.BatchNormalization()(net_actions) #(SMM) supposed to help according to paper CONTINUOUS CONTROL WITH DEEP REINFORCEMENT LEARNING
+        if self.useDefault:
+            net_actions = layers.Dense(units=32, activation='relu')(actions)
+            net_actions = layers.Dense(units=64, activation='relu')(net_actions)
+        else:
+            net_actions = layers.Dense(units=128, activation='relu')(actions)
+            net_actions = layers.Dropout(0.5)(net_states)
+            net_actions = layers.Dense(units=128, activation='relu')(net_actions)
+            net_actions = layers.Dropout(0.5)(net_actions)
+            net_actions = layers.Dense(units=128, activation='relu')(net_actions)
+            net_actions = layers.Dropout(0.5)(net_actions)
+            net_actions = layers.BatchNormalization()(net_actions) #(SMM) 
 
         # Try different layer sizes, activations, add batch normalization, regularizers, etc.
 
         # Combine state and action pathways
         net = layers.Add()([net_states, net_actions])
-        
         net = layers.Activation('relu')(net)
 
         # Add more layers to the combined network if needed
@@ -184,12 +208,15 @@ class Critic:
         self.get_action_gradients = K.function(
             inputs=[*self.model.input, K.learning_phase()],
             outputs=action_gradients)
+
         
 
         
 class DDPG():
     """Reinforcement Learning agent that learns using DDPG."""
-    def __init__(self, task):
+    def __init__(self, task, useDefault=True):
+        self.useDefault = useDefault
+        
         self.task = task
         self.state_size = task.state_size
         self.action_size = task.action_size
@@ -197,41 +224,66 @@ class DDPG():
         self.action_high = task.action_high
 
         # Actor (Policy) Model
-        self.actor_local = Actor(self.state_size, self.action_size, self.action_low, self.action_high)
-        self.actor_target = Actor(self.state_size, self.action_size, self.action_low, self.action_high)
+        self.actor_local = Actor(self.state_size, self.action_size, self.action_low, self.action_high, useDefault)
+        self.actor_target = Actor(self.state_size, self.action_size, self.action_low, self.action_high, useDefault)
 
         # Critic (Value) Model
-        self.critic_local = Critic(self.state_size, self.action_size)
-        self.critic_target = Critic(self.state_size, self.action_size)
+        self.critic_local = Critic(self.state_size, self.action_size, useDefault)
+        self.critic_target = Critic(self.state_size, self.action_size, useDefault)
 
         # Initialize target model parameters with local model parameters
         self.critic_target.model.set_weights(self.critic_local.model.get_weights())
         self.actor_target.model.set_weights(self.actor_local.model.get_weights())
 
         # Noise process (should be in units of RPMs for each rotor)
-        self.exploration_mu = 0 # original 0
-        self.exploration_theta = 0.15 # 0.01 seems to not suck # original 0.15
-        self.exploration_sigma = 0.2 # 0.01 seems to not suck # oringal 0.2
+        if self.useDefault:
+            self.exploration_mu = 0 # postive mean noise to avoid negative RPMs, original 0
+            self.exploration_theta = 0.15 # 0.01 seems to not suck # original 0.15
+            self.exploration_sigma = 0.2 # 0.01 seems to not suck # oringal 0.2
+        else:            
+            self.exploration_mu = 0 # postive mean noise to avoid negative RPMs, original 0
+            self.exploration_theta = 0.20 # 0.01 seems to not suck # original 0.15
+            self.exploration_sigma = 5.0 # 0.01 seems to not suck # oringal 0.2
         self.noise = OUNoise(self.action_size, self.exploration_mu, self.exploration_theta, self.exploration_sigma)
 
         # Replay memory
         self.buffer_size = 100000
-        self.batch_size = 64 # (SMM) default 64, might watch to use a bigger batch, esp with batch norm
+        if self.useDefault:
+            self.batch_size = 64 # (SMM) default 64, might watch to use a bigger batch, esp with batch norm
+        if self.useDefault:
+            self.batch_size = 256 # (SMM) default 64, might watch to use a bigger batch, esp with batch norm
         self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
 
         # Algorithm parameters
-        self.gamma = 0.999 # (SMM) 0.99  # discount factor
-        self.tau = 0.001 # (SMM) 0.01  # for soft update of target parameters
-        
-        # (SMM) Score tracker and learning parameters
-        self.best_score = -np.inf
-        self.score = 0
-        
+        if self.useDefault:
+            self.gamma = 0.99 # (SMM) 0.99  # discount factor
+            self.tau = 0.01 # (SMM) 0.01  # for soft update of target parameters
+        else:
+            self.gamma = 0.99 # (SMM) 0.99  # discount factor
+            self.tau = 0.01 # (SMM) 0.01  # for soft update of target parameters           
+            
         # Episode variables
+        self.score = 0
+        self.best_reward = -np.inf 
         self.reset_episode()
-        
+                       
     def reset_episode(self):
+        
+        if(self.score > self.best_reward):
+            # found a new best policy
+            # perform simulated annealing on the exploration size
+            self.best_reward = self.score
+            if not self.useDefault:
+                alpha = 0.95 # reduce by %
+                self.exploration_mu *= alpha
+                np.clip(self.exploration_mu, 0., 100.)
+                self.exploration_sigma *= alpha  
+                np.clip(self.exploration_sigma, 1., 100.)
+                print("found best score, reducing exploration noise mean bias to ", self.exploration_mu)                   
+                print("found best score, reducing exploration noise sigma to ", self.exploration_sigma)                   
+
         # (SMM) reset total reward and count
+        self.score = 0
         self.total_reward = 0.0
         self.count = 0
         
@@ -289,9 +341,7 @@ class DDPG():
         self.soft_update(self.actor_local.model, self.actor_target.model)   
 
         # (SMM) Use an average reward-based score
-        self.score = self.total_reward / float(self.count) if self.count else 0.0
-        if self.score > self.best_score:
-            self.best_score = self.score
+        self.score = self.total_reward / float(self.count) if self.count else -999.0
         
     def soft_update(self, local_model, target_model):
         """Soft update model parameters."""
