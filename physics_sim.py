@@ -128,7 +128,7 @@ class PhysicsSim():
         moments = self.get_moments(thrusts)
 
         self.angular_accels = moments / self.moments_of_inertia
-        angles = self.pose[3:] + self.angular_v * self.dt + 0.5 * self.angular_accels * self.angular_accels * self.dt ** 2
+        angles = self.pose[3:] + self.angular_v * self.dt + 0.5 * self.angular_accels * self.angular_accels * self.dt**2
         angles = (angles + 2 * np.pi) % (2 * np.pi)
         self.angular_v = self.angular_v + self.angular_accels * self.dt
 
@@ -136,11 +136,9 @@ class PhysicsSim():
         for ii in range(3):
             if position[ii] <= self.lower_bounds[ii]:
                 new_positions.append(self.lower_bounds[ii])
-#                print("lower bound passed xyz[", ii, "]: " , self.lower_bounds[ii]," ending sim...")
                 self.done = True
             elif position[ii] > self.upper_bounds[ii]:
                 new_positions.append(self.upper_bounds[ii])
-#                print("upper bound passed xyz[", ii, "]: ", self.lower_bounds[ii]," ending sim...")
                 self.done = True
             else:
                 new_positions.append(position[ii])
