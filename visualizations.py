@@ -27,7 +27,7 @@ plt.figure(1)
 plt.plot(episode_rewards_mean, label='mean rewards')
 plt.legend()
 axes = plt.gca()
-axes.set_ylim([-50,50])
+axes.set_ylim([-1,1])
 plt.show()  
 
 # plot the 
@@ -35,7 +35,7 @@ plt.figure(2)
 plt.plot(episode_rewards_sum, label='sum rewards')
 plt.legend()
 axes = plt.gca()
-axes.set_ylim([-1000,1000])
+axes.set_ylim([-100,100])
 plt.show()  
 
 # plot last 500 results

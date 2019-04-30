@@ -93,7 +93,7 @@ class Actor:
             net = layers.Dense(units=64, activation='relu')(net)
             net = layers.Dense(units=32, activation='relu')(net)
         else:    
-            net = layers.Dense(units=256, use_bias=False, activation='relu')(states)
+            net = layers.Dense(units=128, use_bias=False, activation='relu')(states)
             net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.3)(net)
 
@@ -101,7 +101,7 @@ class Actor:
             net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.3)(net)
 
-            net = layers.Dense(units=256, use_bias=False, activation='relu')(net)
+            net = layers.Dense(units=128, use_bias=False, activation='relu')(net)
             net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.3)(net)
 #            net = layers.GaussianNoise(1.0)(net) # regulariztion layer
@@ -113,7 +113,7 @@ class Actor:
             raw_actions = layers.Dense(units=self.action_size, activation='sigmoid',
                                        name='raw_actions')(net)
         else:     
-            raw_actions = layers.Dense(units=self.action_size, activation='tanh',
+            raw_actions = layers.Dense(units=self.action_size, activation='sigmoid',
                                        name='raw_actions')(net)
 
         # Scale [0, 1] output for each action dimension to proper range
@@ -168,10 +168,10 @@ class Critic:
             net_states = layers.Dense(units=32, activation='relu')(states)
             net_states = layers.Dense(units=64, activation='relu')(net_states)
         else:
-            net_states = layers.Dense(units=128, use_bias=False, activation='relu')(states)
+            net_states = layers.Dense(units=64, use_bias=False, activation='relu')(states)
             net_states = layers.BatchNormalization()(net_states) #(SMM) 
             net_states = layers.Dropout(0.3)(net_states)
-            net_states = layers.Dense(units=256, use_bias=False, activation='relu')(net_states)
+            net_states = layers.Dense(units=128, use_bias=False, activation='relu')(net_states)
             net_states = layers.BatchNormalization()(net_states) #(SMM) 
             net_states = layers.Dropout(0.3)(net_states)
        
@@ -180,11 +180,11 @@ class Critic:
             net_actions = layers.Dense(units=32, activation='relu')(actions)
             net_actions = layers.Dense(units=64, activation='relu')(net_actions)
         else:     
-            net_actions = layers.Dense(units=128, use_bias=False, activation='relu')(actions)
+            net_actions = layers.Dense(units=64, use_bias=False, activation='relu')(actions)
             net_actions = layers.BatchNormalization()(net_actions) # (SMM) seems to help smooth results
             net_actions = layers.Dropout(0.3)(net_actions)
             
-            net_actions = layers.Dense(units=256, use_bias=False, activation='relu')(net_actions)
+            net_actions = layers.Dense(units=128, use_bias=False, activation='relu')(net_actions)
             net_actions = layers.BatchNormalization()(net_actions) #(SMM) 
             net_actions = layers.Dropout(0.3)(net_actions)
 
@@ -193,7 +193,7 @@ class Critic:
 
         # Combine state and action pathways
         net = layers.Add()([net_states, net_actions])
-        net = layers.Dense(units=128, activation='relu')(net)
+        net = layers.Dense(units=64, activation='relu')(net)
 #        net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
         net = layers.Dropout(0.3)(net)
 
@@ -261,7 +261,7 @@ class DDPG():
         if self.useDefault:
             self.batch_size = 64 # (SMM) default 64, might watch to use a bigger batch, esp with batch norm
         else:
-            self.batch_size = 2048 # (SMM) default 64, might watch to use a bigger batch, esp with batch norm
+            self.batch_size = 1024 # (SMM) default 64, might watch to use a bigger batch, esp with batch norm
         self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
 
         # Algorithm parameters
@@ -349,7 +349,7 @@ class DDPG():
 #        else:
 #            self.score = -999.
         
-        dtSim = 0.002 # time for 1 tic in the simulator
+        dtSim = 0.001 # time for 1 tic in the simulator
         dtAllActionRepeats = dtSim * self.task.action_repeat
         self.score = self.total_reward / (self.task.sim.runtime/dtAllActionRepeats) #/ float(self.count)
 #        self.score = self.total_reward / float(self.count) if self.count else 0.0
@@ -362,9 +362,10 @@ class DDPG():
                 self.exploration_mu *= alpha
                 np.clip(self.exploration_mu, 1., 100.)
                 self.exploration_sigma *= alpha  
-                np.clip(self.exploration_sigma, 0.2, 100.)
+                self.exploration_sigma = np.clip(self.exploration_sigma, 0.2, 100.)
                 self.exploration_theta *= alpha
-                print("found best score of {:4.6f} reducing exploration noise mean bias to {:3.2f}".format(self.score, self.exploration_mu))                   
+                self.exploration_theta = np.clip(self.exploration_theta, 0.1, 100.)
+                print("found best score of {:4.6f} reducing exploration noise theta bias to {:3.2f}".format(self.score, self.exploration_theta))                   
                 print("found best score of {:4.6f} reducing exploration noise sigma to {:3.2f}".format(self.score, self.exploration_sigma))                   
 
         

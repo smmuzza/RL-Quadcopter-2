@@ -5,7 +5,7 @@ if 'session' in locals() and session is not None:
 
 # Setup GPU TF stability
 import tensorflow as tf
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8)
 sess = tf.Session(config=tf.ConfigProto(
   allow_soft_placement=True, log_device_placement=True))
 
@@ -23,7 +23,7 @@ target_pose = np.array([0., 0., 10.]) #SMM original [0., 0., 10.]
 simTime = 5 # make the sim run longer so the agent has more chance to adapt
 num_episodes = 1000
 task = TaskFlyTowardsGoal(init_pose=init_pose, target_pos=target_pose, runtime=simTime)
-useDefault = True
+useDefault = False
 my_agent = DDPG(task, useDefault) 
 print(my_agent)
 print(task)
