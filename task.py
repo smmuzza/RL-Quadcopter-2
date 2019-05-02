@@ -90,17 +90,15 @@ class TaskFlyUp():
     def get_reward(self):
         """Uses current pose of sim to return reward."""
  
-        upReward = 0    
         z = self.sim.pose[2]   
         vz = self.sim.v[2]
         zg = self.target_pos[2]
 
+        upReward = 0    
         if vz > 0:
-            upReward += 0.1*(z + vz)
-        else:
-            upReward += 0.1*(z - vz) # vz is negative so this is a penality               
+            upReward += 1.0*(z * vz)
         
-        reward = np.clip(reward, -1000, 1000)
+        upReward = np.clip(upReward, -1000, 1000)
         
         return upReward
 
@@ -193,46 +191,26 @@ class TaskFlyTowardsGoal():
         # compute current and inital distances to the goal
         r = np.sqrt(dx*dx + dy*dy + dz*dz)
         r0 = np.sqrt(np.power(x0-xg,2.) + np.power(y0-yg, 2.) + np.power(z0-zg, 2.))
+
+        # setup initial position as reward 0
+        reward = r0**3 - (0.9 * r**3)
+                
+        # reward more if closer to goal
+        if r < r0:
+            reward += 1/max(0.0001, r/10000) # check for div 0
+
+        # end if very close to goal
+        if r < 1:
+            self.sim.done = True
+            reward += r0**4 
         
-        reward = 1/self.action_repeat - (0.001 * r**2) # distance penalty     
+        # penalize harshly if about to crash
+        if z < 1.:
+            reward -= 100
         
-        # z direction correct factor
-        if z < zg and vz > 0:
-            reward *= (1.0 + 0.01 * abs(dz) * abs(vz)) # right direction, increase reward by 75%
-        elif z > zg and vz < 0:
-            reward *= (1.0 + 0.01 * abs(dz) * abs(vz)) # right direction, increase reward by 75%
-        elif reward > 0: # wrong direction, cut positive reward %
-            reward *= (1.0 - 0.01 * abs(dz) * abs(vz))
-        elif reward < 0: # wrong direction, increase negative reward %   
-            reward *= (1.0 + 0.01 * abs(dz) * abs(vz))
-
-        # x direction correct factor
-        if x < xg and vx > 0:
-            reward *= (1.0 + 0.01 * abs(dx) * abs(vx)) # right direction, increase reward by 75%
-        elif x > xg and vx < 0:
-            reward *= (1.0 + 0.01 * abs(dx) * abs(vx)) # right direction, increase reward by 75%
-        elif reward > 0: # wrong direction, cut positive reward %
-            reward *= (1.0 - 0.01 * abs(dx) * abs(vx))
-        elif reward < 0: # wrong direction, increase negative reward %   
-            reward *= (1.0 + 0.01 * abs(dx) * abs(vx))
-
-        # y direction correct factor
-        if y < yg and vy > 0:
-            reward *= (1.0 + 0.02 * abs(dy) * abs(vy)) # right direction, increase reward by 75%
-        elif y > yg and vy < 0:
-            reward *= (1.0 + 0.02 * abs(dy) * abs(vy)) # right direction, increase reward by 75%
-        elif reward > 0: # wrong direction, cut positive reward %
-            reward *= (1.0 - 0.02 * abs(dy) * abs(vy))
-        elif reward < 0: # wrong direction, increase negative reward %   
-            reward *= (1.0 + 0.02 * abs(dy) * abs(vy))
-
-        # small velocity factor, want 1 mps or less
-        # if velocity is < 2mps, there is no penality
-        reward *= 5. / np.clip(abs(vx)-5, 5, 10)        
-        reward *= 5. / np.clip(abs(vy)-5, 5, 10) 
-        reward *= 5. / np.clip(abs(vz)-5, 5, 10) 
-           
-        reward = np.clip(reward, -3/self.action_repeat, 3/self.action_repeat)
+        # end early if reward not good            
+        if reward < -r0**2:
+             self.sim.done = True 
         
         return reward
 

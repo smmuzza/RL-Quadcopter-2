@@ -93,17 +93,21 @@ class Actor:
             net = layers.Dense(units=64, activation='relu')(net)
             net = layers.Dense(units=32, activation='relu')(net)
         else:    
-            net = layers.Dense(units=128, use_bias=False, activation='relu')(states)
+            net = layers.Dense(units=64, use_bias=False, activation='relu')(states)
             net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
-            net = layers.Dropout(0.3)(net)
-
-            net = layers.Dense(units=256, use_bias=False, activation='relu')(net)
-            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
-            net = layers.Dropout(0.3)(net)
+            net = layers.Dropout(0.1)(net)
 
             net = layers.Dense(units=128, use_bias=False, activation='relu')(net)
             net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
-            net = layers.Dropout(0.3)(net)
+            net = layers.Dropout(0.1)(net)
+
+            net = layers.Dense(units=128, use_bias=False, activation='relu')(net)
+            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
+            net = layers.Dropout(0.1)(net)
+
+            net = layers.Dense(units=64, use_bias=False, activation='relu')(net)
+            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
+            net = layers.Dropout(0.1)(net)
 #            net = layers.GaussianNoise(1.0)(net) # regulariztion layer
         
         # Try different layer sizes, activations, add batch normalization, regularizers, etc.
@@ -170,10 +174,10 @@ class Critic:
         else:
             net_states = layers.Dense(units=64, use_bias=False, activation='relu')(states)
             net_states = layers.BatchNormalization()(net_states) #(SMM) 
-            net_states = layers.Dropout(0.3)(net_states)
+            net_states = layers.Dropout(0.1)(net_states)
             net_states = layers.Dense(units=128, use_bias=False, activation='relu')(net_states)
             net_states = layers.BatchNormalization()(net_states) #(SMM) 
-            net_states = layers.Dropout(0.3)(net_states)
+            net_states = layers.Dropout(0.1)(net_states)
        
         # Add hidden layer(s) for action pathway
         if self.useDefault:
@@ -182,22 +186,20 @@ class Critic:
         else:     
             net_actions = layers.Dense(units=64, use_bias=False, activation='relu')(actions)
             net_actions = layers.BatchNormalization()(net_actions) # (SMM) seems to help smooth results
-            net_actions = layers.Dropout(0.3)(net_actions)
+            net_actions = layers.Dropout(0.1)(net_actions)
             
             net_actions = layers.Dense(units=128, use_bias=False, activation='relu')(net_actions)
             net_actions = layers.BatchNormalization()(net_actions) #(SMM) 
-            net_actions = layers.Dropout(0.3)(net_actions)
+            net_actions = layers.Dropout(0.1)(net_actions)
 
 
         # Try different layer sizes, activations, add batch normalization, regularizers, etc.
 
         # Combine state and action pathways
         net = layers.Add()([net_states, net_actions])
-        net = layers.Dense(units=64, activation='relu')(net)
-#        net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
-        net = layers.Dropout(0.3)(net)
+        net = layers.Dense(units=32, use_bias=False, activation='relu')(net)
+        net = layers.BatchNormalization()(net) #(SMM) 
 
-#        net = layers.Activation('softmax')(net)
         net = layers.Activation('relu')(net)
 
         # Add more layers to the combined network if needed
@@ -253,11 +255,11 @@ class DDPG():
         else:            
             self.exploration_mu = 0# postive mean noise to avoid negative RPMs, original 0
             self.exploration_theta = 0.40 # 0.01 seems to not suck # original 0.15
-            self.exploration_sigma = 10.0 # 0.01 seems to not suck # oringal 0.2
+            self.exploration_sigma = 20.0 # 0.01 seems to not suck # oringal 0.2
         self.noise = OUNoise(self.action_size, self.exploration_mu, self.exploration_theta, self.exploration_sigma)
 
         # Replay memory
-        self.buffer_size = 100000
+        self.buffer_size = 1000000
         if self.useDefault:
             self.batch_size = 64 # (SMM) default 64, might watch to use a bigger batch, esp with batch norm
         else:
@@ -281,8 +283,8 @@ class DDPG():
         
         # (SMM) reset total reward and count
         self.total_reward = 0.0
-        self.count = 0
-        
+        self.count = 0        
+   
         self.noise.reset()
         state = self.task.reset()
         self.last_state = state
@@ -342,29 +344,28 @@ class DDPG():
         # when the agent flies well for longer, which is the goal, not fly
         # great for 0.2 seconds then crash to maximise reward
         # this is especially important for take off scenarios
-#        if self.count > 1:
-#            dtSim = 0.002 # time for 1 tic in the simulator
-#            dtAllActionRepeats = dtSim * self.task.action_repeat
-#            self.score = self.total_reward / (self.task.sim.runtime/dtAllActionRepeats) #/ float(self.count)
-#        else:
-#            self.score = -999.
-        
-        dtSim = 0.001 # time for 1 tic in the simulator
-        dtAllActionRepeats = dtSim * self.task.action_repeat
-        self.score = self.total_reward / (self.task.sim.runtime/dtAllActionRepeats) #/ float(self.count)
-#        self.score = self.total_reward / float(self.count) if self.count else 0.0
+
+#        dtSim = 0.02 # 20ms for 1 tic in the simulator
+#        dtAllActionRepeats = dtSim * self.task.action_repeat
+#        self.score = self.total_reward #/ (self.task.sim.runtime/dtAllActionRepeats) #/ float(self.count)
+        self.score = self.total_reward / float(self.count) if self.count else 0.0
         if self.score > self.best_score:
             self.best_score = self.score
             
+            # end early if new best experience has happened, before it can go bad
+            # that way the agent gets more examples of good flying,
+            # or at least better flying than previous episodes
+            self.task.done = True
+
             # perform simulated annealing on the exploration size
             if not self.useDefault:
                 alpha = 0.95 # reduce by %
                 self.exploration_mu *= alpha
-                np.clip(self.exploration_mu, 1., 100.)
                 self.exploration_sigma *= alpha  
-                self.exploration_sigma = np.clip(self.exploration_sigma, 0.2, 100.)
                 self.exploration_theta *= alpha
-                self.exploration_theta = np.clip(self.exploration_theta, 0.1, 100.)
+                self.exploration_mu = np.clip(self.exploration_mu, 0., 100.)
+                self.exploration_sigma = np.clip(self.exploration_sigma, 0.1, 100.)
+                self.exploration_theta = np.clip(self.exploration_theta, 0.01, 100.)
                 print("found best score of {:4.6f} reducing exploration noise theta bias to {:3.2f}".format(self.score, self.exploration_theta))                   
                 print("found best score of {:4.6f} reducing exploration noise sigma to {:3.2f}".format(self.score, self.exploration_sigma))                   
 
