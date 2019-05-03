@@ -1,0 +1,1 @@
+episode,time,reward,x,y,z,phi,theta,psi,x_velocity,y_velocity,z_velocity,phi_velocity,theta_velocity,psi_velocity,x_acceleration,y_acceleration,z_acceleration,phi_acceleration,theta_acceleration,psi_acceleration,rotor_speed1,rotor_speed2,rotor_speed3,rotor_speed4,rotor_noise1,rotor_noise2,rotor_noise3,rotor_noise4
