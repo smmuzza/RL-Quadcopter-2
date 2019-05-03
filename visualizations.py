@@ -28,17 +28,20 @@ plt.plot(episode_rewards_mean, label='mean rewards')
 plt.plot(smoothed_mean, label='running mean')
 plt.legend()
 axes = plt.gca()
-axes.set_ylim([-1000,4000])
+axes.set_ylim([-20,1000])
 plt.show()  
 
-# plot the 
+# plot the sum rewards
 plt.figure(2)
 plt.plot(episode_rewards_sum, label='sum rewards')
 plt.plot(smoothed_sum, label='running mean')
 plt.legend()
 axes = plt.gca()
-axes.set_ylim([-1000,60000])
+axes.set_ylim([-1000,6000])
 plt.show()  
+
+# plot of the log scale
+# TBC
 
 # plot first 500 results
 plt.figure(3)

@@ -159,6 +159,7 @@ class TaskFlyTowardsGoal():
 
         # Goal
         self.target_pos = target_pos if target_pos is not None else np.array([0., 0., 10.]) 
+        self.goalReachedCount = 0
 
     def get_reward(self):
         """Uses current pose of sim to return reward."""
@@ -193,24 +194,37 @@ class TaskFlyTowardsGoal():
         r0 = np.sqrt(np.power(x0-xg,2.) + np.power(y0-yg, 2.) + np.power(z0-zg, 2.))
 
         # setup initial position as reward 0
-        reward = r0**3 - (0.9 * r**3)
+        reward = r0 - r
                 
         # reward more if closer to goal
         if r < r0:
-            reward += 1/max(0.0001, r/10000) # check for div 0
+            reward += 1/max(0.01, (r/r0)**4)# check for div 0
 
         # end if very close to goal
-        if r < 1:
+        if r < r0/4:
+            reward = 2.0*reward
             self.sim.done = True
-            reward += r0**4 
+            self.goalReachedCount += 1 
+            print("\nGOAL REACHED! Distance: ", r)
         
-        # penalize harshly if about to crash
-        if z < 1.:
-            reward -= 100
+        # penalize harshly if about to crash / exit the sim
+        if z < 2:
+            reward -= 10
+            self.sim.done = True 
+        if abs(x) > 145:
+            reward -= 10
+            self.sim.done = True 
+        if abs(y) > 145:
+            reward -= 10
+            self.sim.done = True 
+        if z > 250:
+            reward -= 10
+            self.sim.done = True     
         
-        # end early if reward not good            
-        if reward < -r0**2:
-             self.sim.done = True 
+        # early exit if score too bad
+        if r > 1.5 * r0:
+            reward -= 5
+            self.sim.done = True                
         
         return reward
 

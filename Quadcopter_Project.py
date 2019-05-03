@@ -21,7 +21,7 @@ from runSimulation import runSimulation
 init_pose = np.array([0., 0., 10.0, 0., 0., 0.])
 target_pose = np.array([0., 0., 20.]) #SMM original [0., 0., 10.]
 simTime = 5 # make the sim run longer so the agent has more chance to adapt
-num_episodes = 5000
+num_episodes = 500
 task = TaskFlyTowardsGoal(init_pose=init_pose, target_pos=target_pose, runtime=simTime)
 useDefault = False
 my_agent = DDPG(task, useDefault) 

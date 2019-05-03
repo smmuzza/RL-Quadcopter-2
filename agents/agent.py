@@ -94,19 +94,19 @@ class Actor:
             net = layers.Dense(units=32, activation='relu')(net)
         else:    
             net = layers.Dense(units=64, use_bias=False, activation='relu')(states)
-            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
+#            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 
             net = layers.Dense(units=128, use_bias=False, activation='relu')(net)
-            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
+#            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 
             net = layers.Dense(units=128, use_bias=False, activation='relu')(net)
-            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
+#            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 
             net = layers.Dense(units=64, use_bias=False, activation='relu')(net)
-            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
+#            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 #            net = layers.GaussianNoise(1.0)(net) # regulariztion layer
         
@@ -185,20 +185,23 @@ class Critic:
             net_actions = layers.Dense(units=64, activation='relu')(net_actions)
         else:     
             net_actions = layers.Dense(units=64, use_bias=False, activation='relu')(actions)
-            net_actions = layers.BatchNormalization()(net_actions) # (SMM) seems to help smooth results
+#            net_actions = layers.BatchNormalization()(net_actions) # (SMM) seems to help smooth results
             net_actions = layers.Dropout(0.1)(net_actions)
             
             net_actions = layers.Dense(units=128, use_bias=False, activation='relu')(net_actions)
-            net_actions = layers.BatchNormalization()(net_actions) #(SMM) 
+#            net_actions = layers.BatchNormalization()(net_actions) #(SMM) 
             net_actions = layers.Dropout(0.1)(net_actions)
 
 
         # Try different layer sizes, activations, add batch normalization, regularizers, etc.
 
         # Combine state and action pathways
-        net = layers.Add()([net_states, net_actions])
-        net = layers.Dense(units=32, use_bias=False, activation='relu')(net)
-        net = layers.BatchNormalization()(net) #(SMM) 
+        if self.useDefault:
+            net = layers.Add()([net_states, net_actions])
+        else:    
+            net = layers.Add()([net_states, net_actions])
+            net = layers.Dense(units=32, use_bias=False, activation='relu')(net)
+#            net = layers.BatchNormalization()(net) #(SMM) 
 
         net = layers.Activation('relu')(net)
 
@@ -254,16 +257,16 @@ class DDPG():
             self.exploration_sigma = 0.2 # 0.01 seems to not suck # oringal 0.2
         else:            
             self.exploration_mu = 0# postive mean noise to avoid negative RPMs, original 0
-            self.exploration_theta = 0.40 # 0.01 seems to not suck # original 0.15
-            self.exploration_sigma = 20.0 # 0.01 seems to not suck # oringal 0.2
+            self.exploration_theta = 0.15 # 0.01 seems to not suck # original 0.15
+            self.exploration_sigma = 0.2 # 0.01 seems to not suck # oringal 0.2
         self.noise = OUNoise(self.action_size, self.exploration_mu, self.exploration_theta, self.exploration_sigma)
 
         # Replay memory
-        self.buffer_size = 1000000
+        self.buffer_size = 100000
         if self.useDefault:
-            self.batch_size = 64 # (SMM) default 64, might watch to use a bigger batch, esp with batch norm
+            self.batch_size = 64 # (SMM) default 64, might watch to use a bigger batch
         else:
-            self.batch_size = 1024 # (SMM) default 64, might watch to use a bigger batch, esp with batch norm
+            self.batch_size = 64 # (SMM) default 64, might watch to use a bigger batch
         self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
 
         # Algorithm parameters
@@ -294,6 +297,27 @@ class DDPG():
         # (SMM) Save total experience / reward
         self.total_reward += reward
         self.count += 1
+        # update based on reward so the score is in the context of the episode
+        averageReward = self.total_reward / float(self.count) if self.count else 0.0
+        if averageReward > self.best_score:
+            self.best_score = averageReward
+            
+            if not self.useDefault:
+                # end early if new best experience has happened, before it can go bad
+                # that way the agent gets more examples of good flying,
+                # or at least better flying than previous episodes
+                self.task.done = True
+
+                # perform simulated annealing on the exploration size
+                alpha = 0.95 # reduce by %
+                self.exploration_mu *= alpha
+                self.exploration_sigma *= alpha  
+                self.exploration_theta *= alpha
+                self.exploration_mu = np.clip(self.exploration_mu, 0., 100.)
+                self.exploration_sigma = np.clip(self.exploration_sigma, 0.5, 100.)
+                self.exploration_theta = np.clip(self.exploration_theta, 0.05, 100.)
+                print("found best score of {:4.6f} reducing exploration noise theta bias to {:3.2f}".format(self.best_score, self.exploration_theta))                   
+                print("found best score of {:4.6f} reducing exploration noise sigma to {:3.2f}".format(self.best_score, self.exploration_sigma))                   
         
         # Save experience / reward
         self.memory.add(self.last_state, action, reward, next_state, done)
@@ -337,39 +361,7 @@ class DDPG():
         # Soft-update target models
         self.soft_update(self.critic_local.model, self.critic_target.model)
         self.soft_update(self.actor_local.model, self.actor_target.model)   
-
-        # (SMM) Use an average reward-based score
-        # (SMM) Try a total reward, will notice agents that fly longer
-        # Use a fixed count to divide by, otherwise it is hard to notice
-        # when the agent flies well for longer, which is the goal, not fly
-        # great for 0.2 seconds then crash to maximise reward
-        # this is especially important for take off scenarios
-
-#        dtSim = 0.02 # 20ms for 1 tic in the simulator
-#        dtAllActionRepeats = dtSim * self.task.action_repeat
-#        self.score = self.total_reward #/ (self.task.sim.runtime/dtAllActionRepeats) #/ float(self.count)
-        self.score = self.total_reward / float(self.count) if self.count else 0.0
-        if self.score > self.best_score:
-            self.best_score = self.score
-            
-            # end early if new best experience has happened, before it can go bad
-            # that way the agent gets more examples of good flying,
-            # or at least better flying than previous episodes
-            self.task.done = True
-
-            # perform simulated annealing on the exploration size
-            if not self.useDefault:
-                alpha = 0.95 # reduce by %
-                self.exploration_mu *= alpha
-                self.exploration_sigma *= alpha  
-                self.exploration_theta *= alpha
-                self.exploration_mu = np.clip(self.exploration_mu, 0., 100.)
-                self.exploration_sigma = np.clip(self.exploration_sigma, 0.1, 100.)
-                self.exploration_theta = np.clip(self.exploration_theta, 0.01, 100.)
-                print("found best score of {:4.6f} reducing exploration noise theta bias to {:3.2f}".format(self.score, self.exploration_theta))                   
-                print("found best score of {:4.6f} reducing exploration noise sigma to {:3.2f}".format(self.score, self.exploration_sigma))                   
-
-        
+       
     def soft_update(self, local_model, target_model):
         """Soft update model parameters."""
         local_weights = np.array(local_model.get_weights())
