@@ -120,7 +120,7 @@ def runSimulation(init_pose, target_pose, simTime, num_episodes,\
                         plt.show()  
     
                     # plot the mean rewards to monitor progress
-                    if i_episode % 100 == 0:                       
+                    if i_episode % 100 == 0 or plotBestEpisode:                       
                         # Total rewards for each episode
                         smoothed_mean = pd.DataFrame(meanEpisodeRewards).rolling(100).mean() 
                         plt.figure(i_episode + 4 * num_episodes + 1)
