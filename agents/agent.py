@@ -95,19 +95,19 @@ class Actor:
         else:    
 #            net = layers.Dense(units=64, use_bias=False, activation='relu', \
 #                   kernel_regularizer=regularizers.l2(0.01), activity_regularizer=regularizers.l1(0.01))(states)
-            net = layers.Dense(units=64, use_bias=True, activation='relu', )(states)
+            net = layers.Dense(units=64, use_bias=False, activation='relu', )(states)
 #            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 
-            net = layers.Dense(units=128, use_bias=True, activation='relu')(net)
+            net = layers.Dense(units=128, use_bias=False, activation='relu')(net)
 #            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 
-            net = layers.Dense(units=128, use_bias=True, activation='relu')(net)
+            net = layers.Dense(units=128, use_bias=False, activation='relu')(net)
 #            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 
-            net = layers.Dense(units=64, use_bias=True, activation='relu')(net)
+            net = layers.Dense(units=64, use_bias=False, activation='relu')(net)
 #            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 #            net = layers.GaussianNoise(1.0)(net) # regulariztion layer
@@ -174,10 +174,10 @@ class Critic:
             net_states = layers.Dense(units=32, activation='relu')(states)
             net_states = layers.Dense(units=64, activation='relu')(net_states)
         else:
-            net_states = layers.Dense(units=64, use_bias=True, activation='relu')(states)
+            net_states = layers.Dense(units=64, use_bias=False, activation='relu')(states)
 #            net_states = layers.BatchNormalization()(net_states) #(SMM) 
             net_states = layers.Dropout(0.1)(net_states)
-            net_states = layers.Dense(units=128, use_bias=True, activation='relu')(net_states)
+            net_states = layers.Dense(units=128, use_bias=False, activation='relu')(net_states)
 #            net_states = layers.BatchNormalization()(net_states) #(SMM) 
             net_states = layers.Dropout(0.1)(net_states)
        
@@ -186,11 +186,11 @@ class Critic:
             net_actions = layers.Dense(units=32, activation='relu')(actions)
             net_actions = layers.Dense(units=64, activation='relu')(net_actions)
         else:     
-            net_actions = layers.Dense(units=64, use_bias=True, activation='relu')(actions)
+            net_actions = layers.Dense(units=64, use_bias=False, activation='relu')(actions)
 #            net_actions = layers.BatchNormalization()(net_actions) # (SMM) seems to help smooth results
             net_actions = layers.Dropout(0.1)(net_actions)
             
-            net_actions = layers.Dense(units=128, use_bias=True, activation='relu')(net_actions)
+            net_actions = layers.Dense(units=128, use_bias=False, activation='relu')(net_actions)
 #            net_actions = layers.BatchNormalization()(net_actions) #(SMM) 
             net_actions = layers.Dropout(0.1)(net_actions)
 
