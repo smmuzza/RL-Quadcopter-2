@@ -19,9 +19,9 @@ from runSimulation import runSimulation
 # init task (reward structure), and agent
 # simulation time and number of episodes
 init_pose = np.array([0., 0., 10.0, 0., 0., 0.])
-target_pose = np.array([0., 0., 20.]) #SMM original [0., 0., 10.]
+target_pose = np.array([10., 10., 30.]) #SMM original [0., 0., 10.]
 simTime = 5 # make the sim run longer so the agent has more chance to adapt
-num_episodes = 500
+num_episodes = 2500
 task = TaskFlyTowardsGoal(init_pose=init_pose, target_pos=target_pose, runtime=simTime)
 useDefault = False
 my_agent = DDPG(task, useDefault) 

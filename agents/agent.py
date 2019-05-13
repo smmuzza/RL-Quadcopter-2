@@ -93,19 +93,21 @@ class Actor:
             net = layers.Dense(units=64, activation='relu')(net)
             net = layers.Dense(units=32, activation='relu')(net)
         else:    
-            net = layers.Dense(units=64, use_bias=False, activation='relu')(states)
+#            net = layers.Dense(units=64, use_bias=False, activation='relu', \
+#                   kernel_regularizer=regularizers.l2(0.01), activity_regularizer=regularizers.l1(0.01))(states)
+            net = layers.Dense(units=64, use_bias=True, activation='relu', )(states)
 #            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 
-            net = layers.Dense(units=128, use_bias=False, activation='relu')(net)
+            net = layers.Dense(units=128, use_bias=True, activation='relu')(net)
 #            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 
-            net = layers.Dense(units=128, use_bias=False, activation='relu')(net)
+            net = layers.Dense(units=128, use_bias=True, activation='relu')(net)
 #            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 
-            net = layers.Dense(units=64, use_bias=False, activation='relu')(net)
+            net = layers.Dense(units=64, use_bias=True, activation='relu')(net)
 #            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 #            net = layers.GaussianNoise(1.0)(net) # regulariztion layer
@@ -134,7 +136,7 @@ class Actor:
         # Incorporate any additional losses here (e.g. from regularizers)
 
         # Define optimizer and training function
-        optimizer = optimizers.Adam()
+        optimizer = optimizers.Adam(lr=0.0001, amsgrad=True) # optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
         updates_op = optimizer.get_updates(params=self.model.trainable_weights, loss=loss)
         self.train_fn = K.function(
             inputs=[self.model.input, action_gradients, K.learning_phase()],
@@ -172,11 +174,11 @@ class Critic:
             net_states = layers.Dense(units=32, activation='relu')(states)
             net_states = layers.Dense(units=64, activation='relu')(net_states)
         else:
-            net_states = layers.Dense(units=64, use_bias=False, activation='relu')(states)
-            net_states = layers.BatchNormalization()(net_states) #(SMM) 
+            net_states = layers.Dense(units=64, use_bias=True, activation='relu')(states)
+#            net_states = layers.BatchNormalization()(net_states) #(SMM) 
             net_states = layers.Dropout(0.1)(net_states)
-            net_states = layers.Dense(units=128, use_bias=False, activation='relu')(net_states)
-            net_states = layers.BatchNormalization()(net_states) #(SMM) 
+            net_states = layers.Dense(units=128, use_bias=True, activation='relu')(net_states)
+#            net_states = layers.BatchNormalization()(net_states) #(SMM) 
             net_states = layers.Dropout(0.1)(net_states)
        
         # Add hidden layer(s) for action pathway
@@ -184,11 +186,11 @@ class Critic:
             net_actions = layers.Dense(units=32, activation='relu')(actions)
             net_actions = layers.Dense(units=64, activation='relu')(net_actions)
         else:     
-            net_actions = layers.Dense(units=64, use_bias=False, activation='relu')(actions)
+            net_actions = layers.Dense(units=64, use_bias=True, activation='relu')(actions)
 #            net_actions = layers.BatchNormalization()(net_actions) # (SMM) seems to help smooth results
             net_actions = layers.Dropout(0.1)(net_actions)
             
-            net_actions = layers.Dense(units=128, use_bias=False, activation='relu')(net_actions)
+            net_actions = layers.Dense(units=128, use_bias=True, activation='relu')(net_actions)
 #            net_actions = layers.BatchNormalization()(net_actions) #(SMM) 
             net_actions = layers.Dropout(0.1)(net_actions)
 
@@ -214,7 +216,7 @@ class Critic:
         self.model = models.Model(inputs=[states, actions], outputs=Q_values)
 
         # Define optimizer and compile model for training with built-in loss function
-        optimizer = optimizers.Adam()
+        optimizer = optimizers.Adam(lr=0.0001, amsgrad=True)
         self.model.compile(optimizer=optimizer, loss='mse')
 
         # Compute action gradients (derivative of Q values w.r.t. to actions)
@@ -314,8 +316,8 @@ class DDPG():
                 self.exploration_sigma *= alpha  
                 self.exploration_theta *= alpha
                 self.exploration_mu = np.clip(self.exploration_mu, 0., 100.)
-                self.exploration_sigma = np.clip(self.exploration_sigma, 0.5, 100.)
-                self.exploration_theta = np.clip(self.exploration_theta, 0.05, 100.)
+                self.exploration_sigma = np.clip(self.exploration_sigma, 0.01, 100.)
+                self.exploration_theta = np.clip(self.exploration_theta, 0.01, 100.)
                 print("found best score of {:4.6f} reducing exploration noise theta bias to {:3.2f}".format(self.best_score, self.exploration_theta))                   
                 print("found best score of {:4.6f} reducing exploration noise sigma to {:3.2f}".format(self.best_score, self.exploration_sigma))                   
         
