@@ -57,6 +57,7 @@ class ReplayBuffer:
     
 from keras import layers, models, optimizers
 from keras import backend as K
+from keras import regularizers
 
 class Actor:
     """Actor (Policy) Model."""
@@ -95,19 +96,23 @@ class Actor:
         else:    
 #            net = layers.Dense(units=64, use_bias=False, activation='relu', \
 #                   kernel_regularizer=regularizers.l2(0.01), activity_regularizer=regularizers.l1(0.01))(states)
-            net = layers.Dense(units=64, use_bias=False, activation='relu', )(states)
+            net = layers.Dense(units=64, use_bias=False, activation='relu', \
+                   kernel_regularizer=regularizers.l2(0.01), bias_regularizer=regularizers.l2(0.01), activity_regularizer=regularizers.l2(0.01))(states)
 #            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 
-            net = layers.Dense(units=128, use_bias=False, activation='relu')(net)
+            net = layers.Dense(units=128, use_bias=False, activation='relu', \
+                   kernel_regularizer=regularizers.l2(0.01), bias_regularizer=regularizers.l2(0.01), activity_regularizer=regularizers.l2(0.01))(net)
 #            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 
-            net = layers.Dense(units=128, use_bias=False, activation='relu')(net)
+            net = layers.Dense(units=128, use_bias=False, activation='relu', \
+                   kernel_regularizer=regularizers.l2(0.01), bias_regularizer=regularizers.l2(0.01), activity_regularizer=regularizers.l2(0.01))(net)
 #            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 
-            net = layers.Dense(units=64, use_bias=False, activation='relu')(net)
+            net = layers.Dense(units=64, use_bias=False, activation='relu', \
+                   kernel_regularizer=regularizers.l2(0.01), bias_regularizer=regularizers.l2(0.01), activity_regularizer=regularizers.l2(0.01))(net)
 #            net = layers.BatchNormalization()(net) # (SMM) seems to help smooth results
             net = layers.Dropout(0.1)(net)
 #            net = layers.GaussianNoise(1.0)(net) # regulariztion layer

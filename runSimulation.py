@@ -38,7 +38,7 @@ def runSimulation(init_pose, target_pose, simTime, num_episodes,\
     
             results = {x : [] for x in labels}
     
-            while task.goalReachedCount <= 20:
+            while task.goalReachedCount <= 50: # due to action repeat, make this higher than 10*actionrepeat
                 # run the 4 rotors at different RPMs
                 action = my_agent.act(state) 
                 next_state, reward, done = task.step(action)               
