@@ -69,7 +69,7 @@ def runSimulation(init_pose, target_pose, simTime, num_episodes,\
                     meanEpisodeRewards.append(np.mean(results['reward']))
                     
                     print("\rEpi: {:4d}, score: {:7.5f} (best: {:7.5f}) in epi {}, BestEpiCnt: {}, goalCnt: {}\n".format(
-                        i_episode, reward, best_score, best_episode, best_episode_count, task.goalReachedCount), end="")  # [debug]
+                        i_episode, np.mean(results['reward']), best_score, best_episode, best_episode_count, task.goalReachedCount), end="")  # [debug]
                     
                     if i_episode % 50 == 0 or showPlotEachEpisode or plotBestEpisode or i_episode > num_episodes - 3:
                         # plot linear info
