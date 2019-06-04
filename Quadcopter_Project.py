@@ -18,7 +18,7 @@ from runSimulation import runSimulation
 
 # init task (reward structure), and agent
 # simulation time and number of episodes
-init_pose = np.array([0., 0., 10.0, 0., 0., 0.])
+init_pose = np.array([10., 10., 10.0, 0., 0., 0.])
 target_pose = np.array([0., 0., 20.]) #SMM original [0., 0., 10.]
 simTime = 5 # make the sim run longer so the agent has more chance to adapt
 num_episodes = 2500
